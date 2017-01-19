@@ -24,7 +24,30 @@ stat_rows() {
         fi
         echo -e "$ave\t$mean";
     done < $1
-
+}
+stat_cols() {
+    ln=`wc -l < $1`;
+    echo -e "Average\tMean"
+    while read line 
+    do
+        sum=0
+        n=${#arr[@]}
+        ni=$(($n/2))
+        nii=$(($n/2-1))
+        arr=($line);
+        for j in ${arr[@]}; do let sum+=$j; done
+        ave=$(($sum/${#arr[@]}));
+        IFS=$'\n'; 
+        sorted=($(sort -n <<< "${arr[*]}"));
+        unset IFS;
+        #echo "${sorted[@]}"
+        if [ $(($n%2)) -eq 0 ]; then
+            mean=$(((${sorted[$ni]}+${sorted[$nii]})/2))
+        else
+            mean=${sorted[$ni]}
+        fi
+        echo -e "$ave\t$mean";
+    done < $1
 }
 while getopts ":r:c:" o; do
     case "${o}" in
@@ -35,7 +58,7 @@ while getopts ":r:c:" o; do
             ;;
         c)
             filepath=${OPTARG};
-            stat_cols;
+            stat_cols $filepath;
             ;;
         *)
             usage
