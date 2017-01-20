@@ -2,14 +2,21 @@
 
 usage() { echo "Usage: $0 [-r|-c] [file_path]" 1>&2; exit 1; }
 stat_rows() {
-    ln=`wc -l < $1`;
-    echo -e "Average\tMean"
+    echo $1
+    if [ -f $1 ] ;then
+        cat $1 | tr ' ' '\t'
+        ln=`wc -l < $1`;
+    else
+        echo $1 | tr ' ' '\t'
+        ln=`echo $1 | wc -l`
+    fi
+    i=1
+    echo -e "\nStats analysis by rows\nAverage\tMean"
     while read line 
     do
         sum=0
         n=${#arr[@]}
         ni=$(($n/2))
-        nii=$(($n/2-1))
         arr=($line);
         for j in ${arr[@]}; do let sum+=$j; done
         ave=$(($sum/${#arr[@]}));
@@ -17,53 +24,62 @@ stat_rows() {
         sorted=($(sort -n <<< "${arr[*]}"));
         unset IFS;
         #echo "${sorted[@]}"
-        if [ $(($n%2)) -eq 0 ]; then
-            mean=$(((${sorted[$ni]}+${sorted[$nii]})/2))
-        else
-            mean=${sorted[$ni]}
-        fi
+        mean=${sorted[$ni]}
         echo -e "$ave\t$mean";
+        i=$(($i+1))
     done < $1
 }
 stat_cols() {
-    ln=`wc -l < $1`;
-    echo -e "Average\tMean"
-    while read line 
+    cat $1 | tr ' ' '\t'
+    ln=`wc -l < $1`
+    cn=`awk '{print NF}' $1 | sort -nu | tail -1`
+    i=1
+    echo -e "\nStats analysis by colums\nAverage\tMean"
+    while test $i -le $cn
     do
         sum=0
-        n=${#arr[@]}
-        ni=$(($n/2))
-        nii=$(($n/2-1))
-        arr=($line);
+        lnm=$(($ln/2))
+        arr=`cut -d' ' -f$i $1`
         for j in ${arr[@]}; do let sum+=$j; done
-        ave=$(($sum/${#arr[@]}));
+        ave=$(($sum/$ln));
         IFS=$'\n'; 
         sorted=($(sort -n <<< "${arr[*]}"));
         unset IFS;
         #echo "${sorted[@]}"
-        if [ $(($n%2)) -eq 0 ]; then
-            mean=$(((${sorted[$ni]}+${sorted[$nii]})/2))
-        else
-            mean=${sorted[$ni]}
-        fi
+        mean=${sorted[$lnm]}
         echo -e "$ave\t$mean";
+        i=$(($i+1))
     done < $1
 }
-while getopts ":r:c:" o; do
-    case "${o}" in
-        r)
-            filepath=${OPTARG};
-            echo $filepath
-            stat_rows $filepath;
+
+while [ $# -gt 0 ]
+do
+    case $1 in
+        -r*)
+            if [[ -f $2 ]] ; then 
+                stat_rows $2
+            else
+                cat > tmp
+                stat_rows tmp
+                rm -f tmp
+            fi
             ;;
-        c)
-            filepath=${OPTARG};
-            stat_cols $filepath;
+        -c*)
+            if [[ -f $2 ]] ; then 
+                stat_cols $2
+            else
+                cat > tmp
+                stat_cols tmp
+                rm -f tmp
+            fi
             ;;
-        *)
+        -*)
             usage
             ;;
+        *)
+            break
+            ;;
     esac
+    shift
 done
-shift $((OPTIND-1))
 exit 0
