@@ -1,17 +1,15 @@
 #!/bin/bash
 
-usage() { echo "Usage: $0 [-r|-c] [file_path]" 1>&2; exit 1; }
+usage() { echo "Usage: $0 [-rows|-cols] [file_path]" 1>&2; exit 1; }
 stat_rows() {
-    echo $1
     if [ -f $1 ] ;then
-        cat $1 | tr ' ' '\t'
+        #cat $1 | tr ' ' '\t'
         ln=`wc -l < $1`;
     else
-        echo $1 | tr ' ' '\t'
+        #echo $1 | tr ' ' '\t'
         ln=`echo $1 | wc -l`
     fi
     i=1
-    echo -e "\nStats analysis by rows\nAverage\tMean"
     while read line 
     do
         sum=0
@@ -19,37 +17,64 @@ stat_rows() {
         ni=$(($n/2))
         arr=($line);
         for j in ${arr[@]}; do let sum+=$j; done
-        ave=$(($sum/${#arr[@]}));
+        avg=$((($sum+$ni)/${#arr[@]}));
         IFS=$'\n'; 
         sorted=($(sort -n <<< "${arr[*]}"));
         unset IFS;
         #echo "${sorted[@]}"
         mean=${sorted[$ni]}
-        echo -e "$ave\t$mean";
+        averages+=($avg)
+        medians+=($mean)
         i=$(($i+1))
     done < $1
+    print_table averages[@] medians[@] 0
 }
 stat_cols() {
-    cat $1 | tr ' ' '\t'
+    #cat $1 | tr ' ' '\t'
     ln=`wc -l < $1`
     cn=`awk '{print NF}' $1 | sort -nu | tail -1`
     i=1
-    echo -e "\nStats analysis by colums\nAverage\tMean"
     while test $i -le $cn
     do
         sum=0
         lnm=$(($ln/2))
         arr=`cut -d' ' -f$i $1`
         for j in ${arr[@]}; do let sum+=$j; done
-        ave=$(($sum/$ln));
+        avg=$((($sum+$lnm)/$ln));
         IFS=$'\n'; 
         sorted=($(sort -n <<< "${arr[*]}"));
         unset IFS;
         #echo "${sorted[@]}"
         mean=${sorted[$lnm]}
-        echo -e "$ave\t$mean";
+        averages+=($avg)
+        medians+=($mean)
         i=$(($i+1))
     done < $1
+    print_table averages[@] medians[@] 1
+}
+print_table() {
+    declare -a avg=("${!1}")
+    declare -a mean=("${!2}")
+    if [ $3 -eq 1 ] ;then #col
+        echo "Averages:"
+        for i in ${avg[@]}
+        do
+            printf '%.*f\t' 0 $i
+        done
+        echo -e "\nMedians:"
+        for i in ${mean[@]}
+        do
+            printf '%.*f\t' 0 $i
+        done
+        echo
+    else #row
+        echo -e "Average\tMedian"
+        for i in "${!avg[@]}"
+        do
+            printf '%.*f\t' 0 ${avg[$i]}
+            printf '%.*f\n' 0 ${mean[$i]}
+        done
+    fi
 }
 
 while [ $# -gt 0 ]
